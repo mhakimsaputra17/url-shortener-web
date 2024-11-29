@@ -32,8 +32,8 @@ A modern URL shortening service with a beautiful UI built with Node.js, Express,
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mhakimsaputra17/url-shortener-2.git
-   cd url-shortener-2
+   git clone https://github.com/mhakimsaputra17/url-shortener-web
+   cd url-shortener-web
    ```
 
 2. **Install dependencies**
@@ -123,7 +123,7 @@ MIT © [mhakimsaputra17](https://github.com/mhakimsaputra17)
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/mhakimsaputra17/url-shortener-2/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/mhakimsaputra17/url-shortener-web/issues).
 
 ## 👨‍💻 Author
 
