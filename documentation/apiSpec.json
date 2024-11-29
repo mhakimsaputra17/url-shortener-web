@@ -1,0 +1,278 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "URL Shortening Service API",
+      "version": "1.0.0",
+      "description": "API for creating and managing shortened URLs"
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3000/api/v1",
+        "description": "Development server"
+      }
+    ],
+    "paths": {
+      "/urls": {
+        "post": {
+          "summary": "Create shortened URL",
+          "tags": ["URLs"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UrlCreate"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "URL shortened successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UrlResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid input",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "summary": "List all URLs",
+          "tags": ["URLs"],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "page",
+              "schema": {
+                "type": "integer",
+                "default": 1,
+                "minimum": 1
+              }
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "schema": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 100
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "List of URLs",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PaginatedUrlResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/urls/{shortCode}": {
+        "get": {
+          "summary": "Get URL statistics",
+          "tags": ["URLs"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "shortCode",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "URL details",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UrlResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "URL not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete shortened URL",
+          "tags": ["URLs"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "shortCode",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "URL deleted successfully"
+            },
+            "404": {
+              "description": "URL not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/{shortCode}": {
+        "get": {
+          "summary": "Redirect to original URL",
+          "tags": ["URLs"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "shortCode",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "302": {
+              "description": "Redirect to original URL"
+            },
+            "404": {
+              "description": "URL not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "UrlCreate": {
+          "type": "object",
+          "required": ["originalUrl"],
+          "properties": {
+            "originalUrl": {
+              "type": "string",
+              "format": "uri",
+              "example": "https://www.example.com/very-long-url"
+            }
+          }
+        },
+        "UrlResponse": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "507f1f77bcf86cd799439011"
+            },
+            "originalUrl": {
+              "type": "string",
+              "example": "https://www.example.com/very-long-url"
+            },
+            "shortCode": {
+              "type": "string",
+              "example": "abc123"
+            },
+            "shortUrl": {
+              "type": "string",
+              "example": "http://localhost:3000/abc123"
+            },
+            "visitCount": {
+              "type": "integer",
+              "example": 42
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "PaginatedUrlResponse": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/UrlResponse"
+              }
+            },
+            "pagination": {
+              "type": "object",
+              "properties": {
+                "total": {
+                  "type": "integer",
+                  "example": 100
+                },
+                "page": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "limit": {
+                  "type": "integer",
+                  "example": 10
+                },
+                "pages": {
+                  "type": "integer",
+                  "example": 10
+                }
+              }
+            }
+          }
+        },
+        "Error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "example": "INVALID_URL"
+            },
+            "message": {
+              "type": "string",
+              "example": "The provided URL is invalid"
+            }
+          }
+        }
+      }
+    }
+  }

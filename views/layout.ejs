@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+          content: ["./*.html"],
+          theme: {
+            extend: {
+              colors: {
+                primary: {
+                  blue: {
+                    light: "#00ccdd"
+                  }
+                }
+              }
+            }
+          },
+          darkMode: "class"
+        };
+      </script>
+    <style>
+        body {
+            overflow-x: hidden;
+            height: 100vh;
+        }
+        /* Add tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 60px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .tooltip .tooltiptext.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        .dark .modal-content {
+            background-color: #1f2937;
+            color: white;
+            border: 1px solid #374151;
+        }
+
+        .qr-wrapper {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin: 1rem auto;
+            width: fit-content;
+        }
+
+        .dark .qr-wrapper {
+            background-color: #374151;
+        }
+
+        /* Add these new styles */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-purple-50 dark:bg-gray-950">
+   <!-- 
+Add Styles
+button[data-toggle-navbar][data-is-open="true"] #line-1 {
+    transform: rotate(45deg) translateY(0.38rem);
+}
+ 
+button[data-toggle-navbar][data-is-open="true"] #line-2 {
+    transform: rotate(-45deg) translateY(-0.38rem);
+} 
+-->
+    <!-- Add the theme toggle button -->
+    <button id="themeToggle" 
+            class="theme-toggle p-2 rounded-lg bg-white/30 backdrop-blur-sm dark:bg-gray-800/30 hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors"
+            aria-label="Toggle theme">
+        <!-- Sun icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" 
+             class="w-6 h-6 text-yellow-500 dark:hidden">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+        </svg>
+        <!-- Moon icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" 
+             class="w-6 h-6 text-blue-300 hidden dark:block">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+        </svg>
+    </button>
+
+<main class="min-h-screen flex items-center justify-center relative">
+    <!-- Background gradient -->
+    <div class="absolute top-0 inset-x-0 h-64 bg-gradient-to-br from-purple-300 opacity-90 blur-lg dark:from-purple-800 dark:blur-xl dark:opacity-40"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-2/3 aspect-[2/0.5] bg-gradient-to-br from-purple-600 to-pink-400 rounded-full opacity-50 blur-2xl"></div>
+
+    <!-- Content container -->
+    <div class="relative w-full px-5 sm:px-10 md:px-12 lg:px-5 flex flex-col items-center">
+        <!-- Title and form section -->
+        <div class="w-full max-w-2xl text-center space-y-8 mb-10">
+            <!-- Logo -->
+            <div class="flex items-center justify-center gap-x-2 mb-8">
+                <div class="flex items-center -space-x-3">
+                    <span class="h-8 aspect-square bg-purple-600 dark:bg-purple-500 rounded-full flex"></span>
+                    <span class="h-8 aspect-square bg-pink-600 dark:bg-pink-400 blur rounded-full flex"></span>
+                </div>
+                <span class="text-2xl font-bold text-gray-900 dark:text-white">Link Shortener</span>
+            </div>
+
+            <h1 class="text-gray-900 dark:text-white font-bold text-4xl/tight sm:text-5xl/tight lg:text-6xl/tight">
+                Shorten Your Link
+            </h1>
+            <p class="text-gray-600 dark:text-gray-300 text-lg">
+                Create short, memorable links in seconds
+            </p>
+            <div class="flex sm:flex-row flex-col gap-5 w-full max-w-lg mx-auto">
+                <form id="urlForm" class="py-1 pl-6 w-full pr-1 flex gap-3 items-center text-gray-600 dark:text-gray-400 shadow-lg shadow-gray-200/20 dark:shadow-transparent
+                    border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 rounded-full ease-linear focus-within:bg-white dark:focus-within:bg-gray-950 focus-within:border-purple-600">
+                    <input type="url" name="originalUrl" id="originalUrl" placeholder="Paste your link here" required
+                        class="w-full py-3 outline-none bg-transparent">
+                    <button type="submit" class="flex text-white justify-center items-center w-max min-w-max sm:w-max px-6 h-12 rounded-full outline-none relative overflow-hidden border duration-300 ease-linear
+                            after:absolute after:inset-x-0 after:aspect-square after:scale-0 after:opacity-70 after:origin-center after:duration-300 after:ease-linear after:top-0 after:left-0 after:bg-purple-700 hover:after:opacity-100 hover:after:scale-[2.5] bg-purple-600 border-transparent hover:border-[#172554]">
+                        <span class="hidden sm:flex relative z-[5]">Shorten</span>
+                        <span class="flex sm:hidden relative z-[5]">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                            </svg>
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- URL List Container -->
+        <div id="urlList" class="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-lg shadow-lg" style="display: none;">
+            <!-- List Header -->
+            <div class="p-4 flex justify-between items-center border-b dark:border-gray-800">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Your Shortened URLs</h2>
+                <button onclick="deleteAllUrls(this)" 
+                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-lg transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                    Delete All
+                </button>
+            </div>
+            <!-- Scrollable URL List -->
+            <div class="max-h-[calc(100vh-400px)] overflow-y-auto">
+                <div class="space-y-2 p-4">
+                    <!-- URLs will be inserted here by JavaScript -->
+                </div>
+            </div>
+            <!-- Pagination Section -->
+            <div class="border-t dark:border-gray-800 p-4">
+                <div id="pagination" class="flex justify-center gap-2">
+                    <!-- Pagination buttons will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="w-full py-6 relative mt-20">
+    <div class="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-500/10 to-purple-600/10 dark:from-purple-900/20 dark:via-pink-800/20 dark:to-purple-900/20 blur-xl"></div>
+    <div class="relative container mx-auto px-4">
+        <div class="flex flex-col items-center justify-center gap-2">
+            <!-- Logo -->
+            <div class="flex items-center -space-x-2 opacity-80">
+                <span class="h-6 aspect-square bg-purple-600 dark:bg-purple-500 rounded-full flex"></span>
+                <span class="h-6 aspect-square bg-pink-600 dark:bg-pink-400 blur rounded-full flex"></span>
+            </div>
+            <!-- Credit -->
+            <p class="text-center text-gray-600 dark:text-gray-400">
+                Crafted with passion by
+                <a href="https://github.com/mhakimsaputra" 
+                   target="_blank" 
+                   class="font-medium bg-gradient-to-r from-purple-600 to-pink-600 text-transparent bg-clip-text hover:from-purple-700 hover:to-pink-700 dark:from-purple-400 dark:to-pink-400 dark:hover:from-purple-300 dark:hover:to-pink-300 transition-all">
+                    mhakimsaputra
+                </a>
+            </p>
+        </div>
+    </div>
+</footer>
+
+<!-- Replace the existing QR modal with this enhanced version -->
+<div id="qrModal" class="modal" onclick="closeQRModal(event)">
+    <div class="modal-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-medium text-gray-900 dark:text-white">QR Code</h3>
+            <button onclick="closeQRModal(event)" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="qr-wrapper bg-white p-4 rounded-xl">
+            <img id="qrcode" class="w-full max-w-[300px] mx-auto" src="" alt="QR Code">
+        </div>
+        <div class="flex gap-2 justify-center mt-4">
+            <button onclick="downloadQR()" 
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add before closing body tag -->
+<script>
+let currentPage = 1;
+const limit = 5;
+
+// Function to handle form submission
+document.getElementById('urlForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('originalUrl');
+    try {
+        const response = await fetch('/api/v1/urls', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ originalUrl: input.value }),
+        });
+        if (response.ok) {
+            input.value = '';
+            const urlListContainer = document.getElementById('urlList');
+            urlListContainer.style.display = 'block';
+            loadUrls(1);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+});
+
+// Function to load URLs
+async function loadUrls(page) {
+    try {
+        const response = await fetch(`/api/v1/urls?page=${page}&limit=${limit}`);
+        const data = await response.json();
+        
+        // Get the URL list container
+        const urlListContainer = document.getElementById('urlList');
+        
+        // Show or hide the container based on whether there's data
+        if (data.data && data.data.length > 0) {
+            urlListContainer.style.display = 'block';
+            displayUrls(data.data);
+            displayPagination(data.pagination);
+            currentPage = page;
+        } else {
+            urlListContainer.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Function to display URLs
+function displayUrls(urls) {
+    const urlList = document.getElementById('urlList').querySelector('.space-y-2');
+    urlList.innerHTML = urls.map(url => `
+        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 truncate mb-1">
+                        ${url.originalUrl}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <a href="/${url.shortCode}" 
+                           target="_blank"
+                           class="text-purple-600 hover:text-purple-700 font-medium text-sm inline-flex items-center gap-1">
+                            ${url.shortUrl}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </a>
+                        <div class="tooltip">
+                            <button 
+                                onclick="copyToClipboard(this, '${url.shortUrl}')"
+                                class="copy-btn text-gray-500 hover:text-purple-600 transition-colors duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                                </svg>
+                            </button>
+                            <span class="tooltiptext">Copied!</span>
+                        </div>
+                        <button 
+                            onclick="showQRCode('${url.shortCode}')"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                            </svg>
+                        </button>
+                        <button 
+                            onclick="deleteUrl('${url.shortCode}', this)"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" 
+                                 class="w-5 h-5 stroke-red-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between sm:justify-end gap-4 sm:min-w-[130px]">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                        ${url.visitCount} visits
+                    </span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                        ${new Date(url.createdAt).toLocaleDateString()}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Add copy to clipboard function
+async function copyToClipboard(button, text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        
+        // Get tooltip element
+        const tooltip = button.parentElement.querySelector('.tooltiptext');
+        
+        // Show tooltip
+        tooltip.classList.add('show');
+        
+        // Change button icon to checkmark
+        const originalHTML = button.innerHTML;
+        button.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-green-500">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+        `;
+        
+        // Hide tooltip and revert icon after 2 seconds
+        setTimeout(() => {
+            tooltip.classList.remove('show');
+            button.innerHTML = originalHTML;
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+    }
+}
+
+// Function to display pagination
+function displayPagination(pagination) {
+    const paginationEl = document.getElementById('pagination');
+    let buttons = '';
+    
+    for (let i = 1; i <= pagination.totalPages; i++) {
+        buttons += `
+            <button onclick="loadUrls(${i})" 
+                class="px-2.5 py-1 rounded-md text-sm ${currentPage === i 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}">
+                ${i}
+            </button>
+        `;
+    }
+    paginationEl.innerHTML = buttons;
+}
+
+// Add QR code functions
+async function showQRCode(shortCode) {
+    const modal = document.getElementById('qrModal');
+    const qrcodeImg = document.getElementById('qrcode');
+    
+    try {
+        // Show loading state
+        qrcodeImg.src = ''; // Clear previous image
+        modal.classList.add('show');
+        
+        // Fetch QR code
+        const response = await fetch(`/api/v1/urls/${shortCode}/qrcode`);
+        if (!response.ok) throw new Error('Failed to load QR code');
+        
+        // Convert response to blob
+        const blob = await response.blob();
+        
+        // Create and save object URL
+        const objectUrl = URL.createObjectURL(blob);
+        qrcodeImg.src = objectUrl;
+        
+        // Store the short code for download filename
+        qrcodeImg.dataset.shortCode = shortCode;
+        
+        // Clean up object URL when image loads
+        qrcodeImg.onload = () => {
+            // Keep the objectUrl for download
+            qrcodeImg.dataset.downloadUrl = objectUrl;
+        };
+        
+    } catch (error) {
+        console.error('Error loading QR code:', error);
+        alert('Failed to load QR code');
+    }
+}
+
+async function downloadQR() {
+    const qrImage = document.getElementById('qrcode');
+    const downloadUrl = qrImage.dataset.downloadUrl;
+    const shortCode = qrImage.dataset.shortCode;
+    
+    if (!downloadUrl || !shortCode) return;
+
+    try {
+        const response = await fetch(downloadUrl);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `qr-code-${shortCode}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+        console.error('Download error:', error);
+        alert('Failed to download QR code');
+    }
+}
+
+async function shareQR() {
+    const url = document.querySelector('#qrcode').dataset.url;
+    if (!url) return;
+
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: 'QR Code',
+                text: 'Check out this QR Code',
+                url: url
+            });
+        } else {
+            await navigator.clipboard.writeText(url);
+            alert('URL copied to clipboard!');
+        }
+    } catch (error) {
+        console.error('Error sharing:', error);
+    }
+}
+
+function closeQRModal(event) {
+    if (event.target.id === 'qrModal' || event.target.closest('button')) {
+        document.getElementById('qrModal').classList.remove('show');
+    }
+}
+
+// Add the delete URL function
+async function deleteUrl(shortCode, button) {
+    if (!confirm('Are you sure you want to delete this URL?')) return;
+
+    try {
+        console.log('Deleting URL:', shortCode); // Add logging
+
+        const response = await fetch(`/api/v1/urls/${shortCode}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('Delete response status:', response.status); // Add logging
+
+        if (response.status === 204) {
+            // Find the parent element and remove it with animation
+            const parentDiv = button.closest('.bg-gray-50');
+            if (parentDiv) {
+                parentDiv.style.transition = 'all 0.3s ease';
+                parentDiv.style.opacity = '0';
+                setTimeout(() => {
+                    parentDiv.remove();
+                    loadUrls(currentPage); // Reload the current page
+                }, 300);
+            }
+        } else {
+            throw new Error(`Failed to delete URL: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete URL');
+    }
+}
+
+// Add the deleteAllUrls function
+async function deleteAllUrls(button) {
+    if (!confirm('Are you sure you want to delete all URLs? This action cannot be undone.')) return;
+
+    try {
+        const response = await fetch('/api/v1/urls/all', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.status === 204) {
+            // Hide the entire URL list container
+            const urlListContainer = document.getElementById('urlList');
+            urlListContainer.style.display = 'none';
+            
+            // Show success animation on button
+            button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" 
+                     class="w-5 h-5 stroke-green-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                All Deleted!
+            `;
+            // ...rest of success animation code...
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete all URLs');
+    }
+}
+
+// Initial load
+loadUrls(1);
+
+// Add this before your existing scripts
+// Check for saved theme preference, otherwise use system preference
+if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+} else {
+    document.documentElement.classList.remove('dark');
+}
+
+// Add theme toggle functionality
+document.getElementById('themeToggle').addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.theme = isDark ? 'dark' : 'light';
+});
+
+// Watch for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!('theme' in localStorage)) {
+        if (e.matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }
+});
+</script>
+</body>
+</html>
